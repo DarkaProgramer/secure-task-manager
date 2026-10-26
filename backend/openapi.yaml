@@ -1,0 +1,97 @@
+openapi: 3.0.3
+info:
+  title: Task Manager API
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api/v1
+paths:
+  /auth/register:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Credentials" }
+      responses:
+        "201": { description: Account created; returns a token pair }
+        "400": { description: Invalid request }
+        "409": { description: Email already registered }
+  /auth/login:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Credentials" }
+      responses:
+        "200": { description: Returns a token pair }
+        "401": { description: Invalid email or password }
+  /auth/refresh:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RefreshRequest" }
+      responses:
+        "200": { description: Rotated token pair }
+        "401": { description: Token invalid, expired, revoked, or reused }
+  /auth/logout:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RefreshRequest" }
+      responses:
+        "204": { description: Token family revoked }
+  /auth/logout-all:
+    post:
+      security: [{ bearerAuth: [] }]
+      responses:
+        "204": { description: All refresh tokens revoked }
+        "401": { description: Missing or invalid access token }
+  /tasks:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200": { description: Current user's paginated tasks }
+        "401": { description: Missing or invalid access token }
+    post:
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Task created }
+        "400": { description: Invalid request }
+  /tasks/{taskId}:
+    patch:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: taskId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Task updated }
+        "404": { description: Task not found }
+    delete:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { in: path, name: taskId, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Task deleted }
+        "404": { description: Task not found }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    Credentials:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 12, maxLength: 128 }
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
